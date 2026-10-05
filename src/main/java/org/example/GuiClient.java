@@ -16,6 +16,8 @@ import org.example.questiongenerator.QuestionGenerator;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
+import java.util.concurrent.CompletableFuture;
 
 public class GuiClient extends Application {
 
@@ -275,6 +277,15 @@ public class GuiClient extends Application {
     }
 
     public static void main(String[] args) {
+        CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+            Scanner scanner = new Scanner(System.in);
+
+            while (true) {
+                if (scanner.nextLine().equals("exit")) {
+                    System.exit(0);
+                }
+            }
+        });
         launch(args);
     }
 }

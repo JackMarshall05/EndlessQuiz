@@ -1,3 +1,10 @@
 package org.example.questiongenerator;
 
-public record QuestionType(String question, String itemType, String property) { }
+import java.util.List;
+
+public record QuestionType(
+        String question,
+        String itemType,
+        List<QuestionCondition> conditions,
+        boolean notTrue
+) { }
