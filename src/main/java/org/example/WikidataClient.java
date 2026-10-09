@@ -21,6 +21,8 @@ public class WikidataClient {
     private static final Map<String, Item> items = SavedData.getItems();
     private static final Map<String, Set<String>> possibleAnswers = new HashMap<>();
 
+    public static HashMap<String, Integer> idRequestFrequency = new HashMap<>();
+
     private static long lastRequest = 0;
 
     public static List<Item> getItems(List<String> ids) throws Exception {
@@ -69,7 +71,11 @@ public class WikidataClient {
                 String description = entity.path("descriptions").path("en").path("value").asText("");
                 Map<String, List<String>> statements = extractStatements(entity.path("claims"));
 
-                long qrank = QuestionGenerator.idsToQRank.getOrDefault(id, 0);
+                idRequestFrequency.merge(id, 1, Integer::sum);
+
+                Integer qrank = QuestionGenerator.idsToQRank.get(id);
+
+                if (qrank == null || qrank < QuestionGenerator.difficulty.PAGEVIEWS) continue;
 
                 Item item = new Item(
                         id,
@@ -85,7 +91,8 @@ public class WikidataClient {
         }
 
         if (!downloadedItems.isEmpty()) {
-            SavedData.addItems(downloadedItems);
+            SavedData.
+                    addItems(downloadedItems);
         }
     }
 

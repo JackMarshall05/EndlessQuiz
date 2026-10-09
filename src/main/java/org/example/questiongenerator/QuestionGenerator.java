@@ -7,6 +7,7 @@ import org.example.objects.Item;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -603,7 +604,13 @@ public class QuestionGenerator {
     private static HashMap<String, Integer> getIdsQRank() {
         HashMap<String, Integer> ids = new HashMap<>();
 
-        try (BufferedReader reader = Files.newBufferedReader(Path.of("qrank.csv"))) {
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(
+                        Objects.requireNonNull(
+                                QuestionGenerator.class.getResourceAsStream("/qrank.csv")
+                        )
+                )
+        )) {
             String line;
 
             while ((line = reader.readLine()) != null) {
