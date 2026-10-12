@@ -9,13 +9,13 @@ import java.util.*;
 
 public class SavedData {
     private static final ObjectMapper mapper = new ObjectMapper();
-    private static final File ITEM_FILE = new File("items.json");
+    private static final File ITEM_FILE = new File("src/main/resources/items.json");
     private static final Map<String, Item> items = loadItems();
     private static int unsavedItems = 0;
 
     static {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("Running Shutdown Hook");
+            Logger.addEvent("Running Shutdown Hook");
             saveItems();
         }));
     }
@@ -24,9 +24,15 @@ public class SavedData {
      * Loads stored items when the application starts.
      */
     private static Map<String, Item> loadItems() {
-        Logger.addEvent(new Event(System.currentTimeMillis(),"Starting Loading Items", Thread.currentThread()));
+        Logger.addEvent("Retrieving File Loading Items");
+
+        System.out.println("Working directory: " + System.getProperty("user.dir"));
+        System.out.println("Looking for file: " + ITEM_FILE.getAbsolutePath());
+        System.out.println("File exists: " + ITEM_FILE.exists());
 
         if (!ITEM_FILE.exists()) {throw new IllegalStateException("Item File doesn't exist");}
+
+        Logger.addEvent("Started Loading");
 
         Map<String, Item> map = new HashMap<>();
         try {
@@ -35,7 +41,7 @@ public class SavedData {
             System.out.println("Could not load items.json: " + e.getMessage());
         }
 
-        Logger.addEvent(new Event(System.currentTimeMillis(),"Loaded Items", Thread.currentThread()));
+        Logger.addEvent("Loaded Items");
 
         return map;
     }

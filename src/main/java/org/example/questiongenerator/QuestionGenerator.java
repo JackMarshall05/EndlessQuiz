@@ -8,8 +8,6 @@ import org.example.objects.Item;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -224,7 +222,7 @@ public class QuestionGenerator {
     }
 
     public static void addQuestions() {
-        Logger.addEvent(new Event(System.currentTimeMillis(),"Trying to find new Questions", Thread.currentThread()));
+        Logger.addEvent("Trying to find new Questions");
 
         int batchSize = 50;
 
@@ -234,13 +232,13 @@ public class QuestionGenerator {
 
                 List<String> ids = getRandomQuestionIds(batchSize);
 
-                Logger.addEvent(new Event(System.currentTimeMillis(),"Retrieved Question ID's", Thread.currentThread()));
+                Logger.addEvent("Retrieved Question ID's");
 
                 if (ids.isEmpty()) throw new IllegalStateException("There should always be at least one id");
 
                 List<Item> items = WikidataClient.getItems(ids);
 
-                Logger.addEvent(new Event(System.currentTimeMillis(),"Retrieved Items", Thread.currentThread()));
+                Logger.addEvent("Retrieved Items");
 
                 List<QuestionSelection> selections = new ArrayList<>();
                 Map<String, List<String>> possibleAnswers = new HashMap<>();
@@ -260,7 +258,7 @@ public class QuestionGenerator {
                     }
                 }
 
-                Logger.addEvent(new Event(System.currentTimeMillis(),"Selected Questions", Thread.currentThread()));
+                Logger.addEvent("Selected Questions");
 
                 List<String> requiredAnswerIds = selections.stream()
                         .flatMap(selection -> selection.conditions().stream())
@@ -270,11 +268,11 @@ public class QuestionGenerator {
 
                 WikidataClient.getItems(requiredAnswerIds);
 
-                Logger.addEvent(new Event(System.currentTimeMillis(),"Loaded Selected Answers", Thread.currentThread()));
+                Logger.addEvent("Loaded Selected Answers");
 
                 WikidataClient.addPossibleAnswers(possibleAnswers);
 
-                Logger.addEvent(new Event(System.currentTimeMillis(),"Found Possible Answers", Thread.currentThread()));
+                Logger.addEvent("Found Possible Answers");
 
                 for (QuestionSelection selection : selections) {
                     Question question = createQuestion(selection);
@@ -285,12 +283,7 @@ public class QuestionGenerator {
                     }
                 }
 
-                Logger.addEvent(new Event(System.currentTimeMillis(),"Created Questions", Thread.currentThread()));
-
-                long end = System.currentTimeMillis();
-
-                System.out.println("It took " + ((double)(end-start)/1000) + " seconds to find new questions");
-                System.out.println("New Buffered Questions Size is " + bufferedQuestions.size());
+                Logger.addEvent("Created Questions with new size " + bufferedQuestions.size());
             } catch (Exception e) {
                 System.out.println("Error: " + e);
                 e.printStackTrace();

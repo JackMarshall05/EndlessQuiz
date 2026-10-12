@@ -75,18 +75,19 @@ public class WikidataClient {
 
                 Integer qrank = QuestionGenerator.idsToQRank.get(id);
 
-                if (qrank == null || qrank < QuestionGenerator.difficulty.PAGEVIEWS) continue;
-
                 Item item = new Item(
                         id,
                         label,
                         description,
                         statements,
-                        qrank
+                        qrank == null ? 0 : qrank
                 );
 
                 items.put(id, item);
-                downloadedItems.put(id, item);
+
+                if (qrank != null && qrank > QuestionGenerator.difficulty.PAGEVIEWS) {
+                    downloadedItems.put(id, item);
+                }
             }
         }
 
