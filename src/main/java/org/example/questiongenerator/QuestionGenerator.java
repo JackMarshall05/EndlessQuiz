@@ -4,6 +4,7 @@ import org.example.Event;
 import org.example.Logger;
 import org.example.WikidataClient;
 import org.example.objects.Item;
+import org.example.saveddata.SavedQuestionData;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -19,7 +20,7 @@ public class QuestionGenerator {
     public static HashMap<String, Integer> idsToQRank = getIdsQRank();
 
     private static final CopyOnWriteArrayList<Question> bufferedQuestions = new CopyOnWriteArrayList<>();
-    private static final List<Question> allQuestions = new ArrayList<>();
+    private static final List<Question> allQuestions = new ArrayList<>(bufferedQuestions);
     private static final int TARGET_BUFFER_SIZE = 20000;
     private static final Map<Difficulty, List<String>> questionIdsByDifficulty = new EnumMap<>(Difficulty.class);
 
@@ -274,14 +275,13 @@ public class QuestionGenerator {
 
                 Logger.addEvent("Found Possible Answers");
 
+                List<Question> newQuestions = new ArrayList<>();
                 for (QuestionSelection selection : selections) {
                     Question question = createQuestion(selection);
-
-                    if (question != null) {
-                        bufferedQuestions.add(question);
-                        allQuestions.add(question);
-                    }
+                    if (question != null) {newQuestions.add(question);}
                 }
+                bufferedQuestions.addAll(newQuestions);
+                allQuestions.addAll(newQuestions);
 
                 Logger.addEvent("Created Questions with new size " + bufferedQuestions.size());
             } catch (Exception e) {

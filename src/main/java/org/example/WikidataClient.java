@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.objects.Item;
 import org.example.questiongenerator.QuestionGenerator;
+import org.example.saveddata.SavedItemData;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -18,7 +19,7 @@ public class WikidataClient {
     private static final HttpClient client = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
     private static final ObjectMapper mapper = new ObjectMapper();
 
-    private static final Map<String, Item> items = SavedData.getItems();
+    private static final Map<String, Item> items = SavedItemData.getItems();
     private static final Map<String, Set<String>> possibleAnswers = new HashMap<>();
 
     public static HashMap<String, Integer> idRequestFrequency = new HashMap<>();
@@ -92,7 +93,7 @@ public class WikidataClient {
         }
 
         if (!downloadedItems.isEmpty()) {
-            SavedData.
+            SavedItemData.
                     addItems(downloadedItems);
         }
     }
