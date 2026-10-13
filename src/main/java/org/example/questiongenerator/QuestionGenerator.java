@@ -47,10 +47,7 @@ public class QuestionGenerator {
             new QuestionType("Which song was NOT composed by %s?", "Q5", List.of(new QuestionCondition(null, "P86", null, true, "Q7366")), true),
             new QuestionType("Which album was NOT performed by %s?", "Q5", List.of(new QuestionCondition(null, "P175", null, true, "Q482994")), true),
             new QuestionType("Which university did %s attend?", "Q5", List.of(new QuestionCondition(null, "P69", null)), false),
-            new QuestionType("Which award has %s received?", "Q5", List.of(new QuestionCondition(null, "P166", null)), false),
-            new QuestionType("Which award has %s NOT received?", "Q5", List.of(new QuestionCondition(null, "P166", null)), true),
             new QuestionType("Which field is %s known for?", "Q5", List.of(new QuestionCondition(null, "P101", null)), false),
-            new QuestionType("Which organisation has %s worked for?", "Q5", List.of(new QuestionCondition(null, "P108", null)), false),
 
             // Countries
             new QuestionType("What is the capital of %s?", "Q6256", List.of(new QuestionCondition(null, "P36", null)), false),
@@ -61,15 +58,9 @@ public class QuestionGenerator {
             new QuestionType("Which country does NOT share a border with %s?", "Q6256", List.of(new QuestionCondition(null, "P47", null)), true),
             new QuestionType("Which is NOT an official language of %s?", "Q6256", List.of(new QuestionCondition(null, "P37", null)), true),
             new QuestionType("Which city is NOT in %s?", "Q6256", List.of(new QuestionCondition(null, "P17", null, true, "Q515")), true),
-            new QuestionType("Which of these is NOT true about %s?", "Q6256", List.of(
-                    new QuestionCondition("Its capital is %s", "P36", null),
-                    new QuestionCondition("Its currency is %s", "P38", null),
-                    new QuestionCondition("It is in %s", "P30", null),
-                    new QuestionCondition("An official language is %s", "P37", null)
-            ), true),
 
             // Continents
-            new QuestionType("Which country is NOT completely or partially on %s?", "Q5107", List.of(new QuestionCondition(null, "P30", null, true, "Q6256")), true),
+            new QuestionType("Which country is NOT completely or partially in %s?", "Q5107", List.of(new QuestionCondition(null, "P30", null, true, "Q6256")), true),
 
             // Cities
             new QuestionType("Which country is %s in?", "Q515", List.of(new QuestionCondition(null, "P17", null)), false),
@@ -78,9 +69,6 @@ public class QuestionGenerator {
             // Books
             new QuestionType("Who wrote %s?", "Q571", List.of(new QuestionCondition(null, "P50", null)), false),
             new QuestionType("What genre is %s?", "Q571", List.of(new QuestionCondition(null, "P136", null)), false),
-            new QuestionType("Which genre is NOT associated with %s?", "Q571", List.of(new QuestionCondition(null, "P136", null)), true),
-            new QuestionType("Who published %s?", "Q571", List.of(new QuestionCondition(null, "P123", null)), false),
-            new QuestionType("What language was %s written in?", "Q571", List.of(new QuestionCondition(null, "P407", null)), false),
 
             // Films
             new QuestionType("Who directed %s?", "Q11424", List.of(new QuestionCondition(null, "P57", null)), false),
@@ -88,19 +76,11 @@ public class QuestionGenerator {
             new QuestionType("Who composed the music for %s?", "Q11424", List.of(new QuestionCondition(null, "P86", null)), false),
             new QuestionType("What genre is %s?", "Q11424", List.of(new QuestionCondition(null, "P136", null)), false),
             new QuestionType("Who was NOT a cast member of %s?", "Q11424", List.of(new QuestionCondition(null, "P161", null)), true),
-            new QuestionType("Which genre is NOT associated with %s?", "Q11424", List.of(new QuestionCondition(null, "P136", null)), true),
-            new QuestionType("Which company produced %s?", "Q11424", List.of(new QuestionCondition(null, "P272", null)), false),
-            new QuestionType("Which country is %s from?", "Q11424", List.of(new QuestionCondition(null, "P495", null)), false),
-            new QuestionType("What work is %s based on?", "Q11424", List.of(new QuestionCondition(null, "P144", null)), false),
-            new QuestionType("What language was %s originally made in?", "Q11424", List.of(new QuestionCondition(null, "P364", null)), false),
 
             // Television series
-            new QuestionType("Who created %s?", "Q5398426", List.of(new QuestionCondition(null, "P170", null)), false),
             new QuestionType("Who was a cast member of %s?", "Q5398426", List.of(new QuestionCondition(null, "P161", null)), false),
             new QuestionType("What genre is %s?", "Q5398426", List.of(new QuestionCondition(null, "P136", null)), false),
             new QuestionType("Who was NOT a cast member of %s?", "Q5398426", List.of(new QuestionCondition(null, "P161", null)), true),
-            new QuestionType("Which genre is NOT associated with %s?", "Q5398426", List.of(new QuestionCondition(null, "P136", null)), true),
-            new QuestionType("Which company produced %s?", "Q5398426", List.of(new QuestionCondition(null, "P272", null)), false),
             new QuestionType("Which network originally broadcast %s?", "Q5398426", List.of(new QuestionCondition(null, "P449", null)), false),
 
             // Songs
@@ -109,8 +89,6 @@ public class QuestionGenerator {
             new QuestionType("Who composed %s?", "Q7366", List.of(new QuestionCondition(null, "P86", null)), false),
             new QuestionType("Who wrote the lyrics for %s?", "Q7366", List.of(new QuestionCondition(null, "P676", null)), false),
             new QuestionType("Who produced %s?", "Q7366", List.of(new QuestionCondition(null, "P162", null)), false),
-            new QuestionType("Which genre is NOT associated with %s?", "Q7366", List.of(new QuestionCondition(null, "P136", null)), true),
-            new QuestionType("Which record label released %s?", "Q7366", List.of(new QuestionCondition(null, "P264", null)), false),
 
             // Albums
             new QuestionType("Who performed the album %s?", "Q482994", List.of(new QuestionCondition(null, "P175", null)), false),
@@ -121,8 +99,6 @@ public class QuestionGenerator {
 
             // Companies
             new QuestionType("Who founded %s?", "Q4830453", List.of(new QuestionCondition(null, "P112", null)), false),
-            new QuestionType("What industry does %s operate in?", "Q4830453", List.of(new QuestionCondition(null, "P452", null)), false),
-            new QuestionType("Which organisation is the parent company of %s?", "Q4830453", List.of(new QuestionCondition(null, "P749", null)), false),
 
             // Universities
             new QuestionType("Which country is %s in?", "Q3918", List.of(new QuestionCondition(null, "P17", null)), false),
@@ -146,8 +122,6 @@ public class QuestionGenerator {
 
             // Airports
             new QuestionType("Which country is %s in?", "Q1248784", List.of(new QuestionCondition(null, "P17", null)), false),
-            new QuestionType("Which city does %s serve?", "Q1248784", List.of(new QuestionCondition(null, "P931", null)), false),
-            new QuestionType("What is %s named after?", "Q1248784", List.of(new QuestionCondition(null, "P138", null)), false),
 
             // Museums
             new QuestionType("Which country is %s in?", "Q33506", List.of(new QuestionCondition(null, "P17", null)), false),
@@ -155,14 +129,7 @@ public class QuestionGenerator {
             // Video games
             new QuestionType("Who developed %s?", "Q7889", List.of(new QuestionCondition(null, "P178", null)), false),
             new QuestionType("What genre is %s?", "Q7889", List.of(new QuestionCondition(null, "P136", null)), false),
-            new QuestionType("Which genre is NOT associated with %s?", "Q7889", List.of(new QuestionCondition(null, "P136", null)), true),
             new QuestionType("Who published %s?", "Q7889", List.of(new QuestionCondition(null, "P123", null)), false),
-            new QuestionType("Which platform can %s be played on?", "Q7889", List.of(new QuestionCondition(null, "P400", null)), false),
-
-            // Fictional characters
-            new QuestionType("Who created %s?", "Q95074", List.of(new QuestionCondition(null, "P170", null)), false),
-            new QuestionType("What work does %s appear in?", "Q95074", List.of(new QuestionCondition(null, "P1441", null)), false),
-            new QuestionType("Which work does %s NOT appear in?", "Q95074", List.of(new QuestionCondition(null, "P1441", null)), true),
 
             // Planets
             new QuestionType("What is %s named after?", "Q634", List.of(new QuestionCondition(null, "P138", null)), false),
@@ -183,16 +150,7 @@ public class QuestionGenerator {
             new QuestionType("Which constellation is %s in?", "Q523", List.of(new QuestionCondition(null, "P59", null)), false),
 
             // Galaxies
-            new QuestionType("Which constellation is %s in?", "Q318", List.of(new QuestionCondition(null, "P59", null)), false),
-
-            // Spacecraft
-            new QuestionType("Who operates %s?", "Q40218", List.of(new QuestionCondition(null, "P137", null)), false),
-            new QuestionType("Who manufactured %s?", "Q40218", List.of(new QuestionCondition(null, "P176", null)), false),
-            new QuestionType("What is %s named after?", "Q40218", List.of(new QuestionCondition(null, "P138", null)), false),
-
-            // Constellations
-            new QuestionType("Which star is NOT in %s?", "Q8928", List.of(new QuestionCondition(null, "P59", null, true, "Q523")), true),
-            new QuestionType("Which galaxy is NOT in %s?", "Q8928", List.of(new QuestionCondition(null, "P59", null, true, "Q318")), true)
+            new QuestionType("Which constellation is %s in?", "Q318", List.of(new QuestionCondition(null, "P59", null)), false)
     );
 
     private static CompletableFuture<Void> future;
