@@ -11,7 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class SavedQuestionData extends SavedData{
+public class SavedQuestionData extends SavedData {
     private static final File FILE = new File("src/main/resources/questions.json");
     private static final List<Question> questions = loadQuestions();
 
@@ -28,13 +28,16 @@ public class SavedQuestionData extends SavedData{
     private static List<Question> loadQuestions() {
         Logger.addEvent("Retrieving File Loading Questions");
 
-        if (!FILE.exists()) {throw new IllegalStateException("Question File doesn't exist");}
+        if (!FILE.exists()) {
+            throw new IllegalStateException("Question File doesn't exist");
+        }
 
         Logger.addEvent("Started Loading");
 
         List<Question> list = new ArrayList<Question>();
         try {
-            list = mapper.readValue(FILE, new TypeReference<>() {});
+            list = mapper.readValue(FILE, new TypeReference<>() {
+            });
         } catch (Exception e) {
             //throw new IllegalStateException("Could not load question.json: " + e.getMessage());
         }

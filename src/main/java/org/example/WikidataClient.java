@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.objects.Item;
 import org.example.questiongenerator.QuestionGenerator;
 import org.example.saveddata.SavedItemData;
+import org.example.saveddata.SaveIdData;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -15,14 +16,12 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class WikidataClient {
-    private static final long REQUEST_DELAY = 500;
+    private static final long REQUEST_DELAY = 2000;
     private static final HttpClient client = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
     private static final ObjectMapper mapper = new ObjectMapper();
 
     private static final Map<String, Item> items = SavedItemData.getItems();
     private static final Map<String, Set<String>> possibleAnswers = new HashMap<>();
-
-    public static HashMap<String, Integer> idRequestFrequency = new HashMap<>();
 
     private static long lastRequest = 0;
 
@@ -44,8 +43,10 @@ public class WikidataClient {
                 .toList();
     }
 
-    private static void requestItems(List<String> ids) throws Exception {
+    private static synchronized void requestItems(List<String> ids) throws Exception {
         Map<String, Item> downloadedItems = new HashMap<>();
+
+        SaveIdData.recordRequests(ids);
 
         for (int start = 0; start < ids.size(); start += 50) {
             List<String> batch = ids.subList(start, Math.min(start + 50, ids.size()));
@@ -72,8 +73,6 @@ public class WikidataClient {
                 String description = entity.path("descriptions").path("en").path("value").asText("");
                 Map<String, List<String>> statements = extractStatements(entity.path("claims"));
 
-                idRequestFrequency.merge(id, 1, Integer::sum);
-
                 Integer qrank = QuestionGenerator.idsToQRank.get(id);
 
                 Item item = new Item(
@@ -93,8 +92,7 @@ public class WikidataClient {
         }
 
         if (!downloadedItems.isEmpty()) {
-            SavedItemData.
-                    addItems(downloadedItems);
+            SavedItemData.addItems(downloadedItems);
         }
     }
 
@@ -192,6 +190,7 @@ public class WikidataClient {
                         })
                         .orElse(5000L);
 
+                Logger.addEvent("Overloaded WikiData, Waiting " + (wait / 1000.0) + " seconds");
                 Thread.sleep(wait);
                 continue;
             }
