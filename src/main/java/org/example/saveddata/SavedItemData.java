@@ -20,7 +20,7 @@ public class SavedItemData implements SavedData<Map<String, Item>> {
 
     @Override
     public synchronized void loadData() {
-        Logger.addEvent("Retrieving File Loading Items");
+        Logger.addEvent("Trying to Load Items");
 
         if (!FILE.exists()) {
             throw new IllegalStateException("Item File doesn't exist");
@@ -59,9 +59,9 @@ public class SavedItemData implements SavedData<Map<String, Item>> {
 
     @Override
     public synchronized void saveData() {
-        if (unsavedCount == 0) return;
+        Logger.addEvent("Saving " + unsavedCount + " New Items. Current size = " + items.size());
 
-        Logger.addEvent("Saving " + unsavedCount + " New Items");
+        if (unsavedCount == 0) return;
 
         try {
             mapper.writeValue(FILE, items);
@@ -78,11 +78,6 @@ public class SavedItemData implements SavedData<Map<String, Item>> {
     @Override
     public synchronized Map<String, Item> getData() {
         return new HashMap<>(items);
-    }
-
-    @Override
-    public void runShutdownHook() {
-        saveData();
     }
 
     public synchronized int getUnsavedCount() {

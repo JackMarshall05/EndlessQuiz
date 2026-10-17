@@ -77,11 +77,6 @@ public class SavedQuestionData implements SavedData<List<Question>> {
         return new ArrayList<>(questions);
     }
 
-    @Override
-    public void runShutdownHook() {
-        saveData();
-    }
-
     public synchronized int getUnsavedCount() {
         return unsavedCount;
     }

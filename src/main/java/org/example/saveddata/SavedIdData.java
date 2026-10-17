@@ -24,6 +24,8 @@ public class SavedIdData implements SavedData<Map<String, Long>> {
 
     @Override
     public synchronized void loadData() {
+        Logger.addEvent("Trying To Load Id's");
+
         Map<String, Long> loaded = new HashMap<>();
 
         if (Files.exists(FILE)) {
@@ -54,6 +56,8 @@ public class SavedIdData implements SavedData<Map<String, Long>> {
         idRequestFrequency.clear();
         idRequestFrequency.putAll(loaded);
         unsavedChanges = false;
+
+        Logger.addEvent("Finished Loading Id's");
     }
 
     @Override
@@ -132,10 +136,5 @@ public class SavedIdData implements SavedData<Map<String, Long>> {
     @Override
     public synchronized Map<String, Long> getData() {
         return new HashMap<>(idRequestFrequency);
-    }
-
-    @Override
-    public void runShutdownHook() {
-        saveData();
     }
 }
