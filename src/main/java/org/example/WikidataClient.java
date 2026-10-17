@@ -4,8 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.objects.Item;
 import org.example.questiongenerator.QuestionGenerator;
-import org.example.saveddata.SavedItemData;
-import org.example.saveddata.SaveIdData;
+import org.example.saveddata.SavedDataDTO;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -20,7 +19,7 @@ public class WikidataClient {
     private static final HttpClient client = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
     private static final ObjectMapper mapper = new ObjectMapper();
 
-    private static final Map<String, Item> items = SavedItemData.getItems();
+    private static final Map<String, Item> items = SavedDataDTO.SAVED_ITEM_DATA.getData();
     private static final Map<String, Set<String>> possibleAnswers = new HashMap<>();
 
     private static long lastRequest = 0;
@@ -46,7 +45,11 @@ public class WikidataClient {
     private static synchronized void requestItems(List<String> ids) throws Exception {
         Map<String, Item> downloadedItems = new HashMap<>();
 
-        SaveIdData.recordRequests(ids);
+        SavedDataDTO.SAVED_ID_DATA.recordData(ids.stream()
+                .collect(Collectors.groupingBy(
+                        String -> String, // key mapper
+                        Collectors.counting() // value mapper
+                )));
 
         for (int start = 0; start < ids.size(); start += 50) {
             List<String> batch = ids.subList(start, Math.min(start + 50, ids.size()));
@@ -92,7 +95,7 @@ public class WikidataClient {
         }
 
         if (!downloadedItems.isEmpty()) {
-            SavedItemData.addItems(downloadedItems);
+            SavedDataDTO.SAVED_ITEM_DATA.recordData(downloadedItems);
         }
     }
 

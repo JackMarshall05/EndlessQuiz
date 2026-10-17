@@ -6,70 +6,86 @@ import org.example.Logger;
 import org.example.objects.Item;
 
 import java.io.File;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
-public class SavedItemData extends SavedData {
+public class SavedItemData implements SavedData<Map<String, Item>> {
+    private static final ObjectMapper mapper = new ObjectMapper();
     private static final File FILE = new File("src/main/resources/items.json");
-    private static final Map<String, Item> items = loadItems();
 
-    static {
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            Logger.addEvent("Running Shutdown Hook");
-            saveItems();
-        }));
-    }
+    private final Map<String, Item> items = new HashMap<>();
+    private int unsavedCount = 0;
 
-    /**
-     * Loads stored items when the application starts.
-     */
-    private static Map<String, Item> loadItems() {
+    public SavedItemData(){loadData();}
+
+    @Override
+    public synchronized void loadData() {
         Logger.addEvent("Retrieving File Loading Items");
 
-        if (!FILE.exists()) {throw new IllegalStateException("Item File doesn't exist");}
+        if (!FILE.exists()) {
+            throw new IllegalStateException("Item File doesn't exist");
+        }
 
-        Logger.addEvent("Started Loading");
-
-        Map<String, Item> map;
         try {
-            map = mapper.readValue(FILE, new TypeReference<>() {});
+            Map<String, Item> loaded = mapper.readValue(
+                    FILE,
+                    new TypeReference<Map<String, Item>>() {}
+            );
+
+            if (loaded == null) {
+                throw new IllegalStateException("items.json is empty");
+            }
+
+            items.clear();
+            items.putAll(loaded);
+            unsavedCount = 0;
+
         } catch (Exception e) {
-            throw new IllegalStateException("Could not load items.json: " + e.getMessage());
+            throw new IllegalStateException(
+                    "Could not load items.json", e
+            );
         }
 
         Logger.addEvent("Loaded Items");
-
-        return map;
     }
 
-    /**
-     * Saves the current items to items.json.
-     */
-    private static synchronized void saveItems() {
+    @Override
+    public synchronized void recordData(Map<String, Item> data) {
+        if (data == null || data.isEmpty()) return;
+
+        items.putAll(data);
+        unsavedCount += data.size();
+    }
+
+    @Override
+    public synchronized void saveData() {
         if (unsavedCount == 0) return;
+
         Logger.addEvent("Saving " + unsavedCount + " New Items");
+
         try {
             mapper.writeValue(FILE, items);
             unsavedCount = 0;
         } catch (Exception e) {
-            System.out.println("Could not save items.json: " + e.getMessage());
+            throw new IllegalStateException(
+                    "Could not save items.json", e
+            );
         }
+
         Logger.addEvent("New Items Size is now " + items.size());
     }
 
-    /**
-     * Returns all currently cached items.
-     */
-    public static Map<String, Item> getItems() {
+    @Override
+    public synchronized Map<String, Item> getData() {
         return new HashMap<>(items);
     }
 
-    /**
-     * Adds items directly to the cache and saves them.
-     */
-    public static void addItems(Map<String, Item> newItems) {
-        items.putAll(newItems);
-        unsavedCount += newItems.size();
+    @Override
+    public void runShutdownHook() {
+        saveData();
+    }
 
-        if (unsavedCount >= 50) saveItems();
+    public synchronized int getUnsavedCount() {
+        return unsavedCount;
     }
 }

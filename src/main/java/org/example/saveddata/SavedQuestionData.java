@@ -1,79 +1,88 @@
 package org.example.saveddata;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.Logger;
-import org.example.objects.Item;
 import org.example.questiongenerator.Question;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-public class SavedQuestionData extends SavedData {
+public class SavedQuestionData implements SavedData<List<Question>> {
+
+    private static final ObjectMapper mapper = new ObjectMapper();
     private static final File FILE = new File("src/main/resources/questions.json");
-    private static final List<Question> questions = loadQuestions();
 
-    static {
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            Logger.addEvent("Running Shutdown Hook");
-            saveQuestions();
-        }));
-    }
+    private final List<Question> questions = new ArrayList<>();
+    private int unsavedCount = 0;
 
-    /**
-     * Loads stored items when the application starts.
-     */
-    private static List<Question> loadQuestions() {
+    public SavedQuestionData(){loadData();}
+
+    @Override
+    public synchronized void loadData() {
         Logger.addEvent("Retrieving File Loading Questions");
 
         if (!FILE.exists()) {
             throw new IllegalStateException("Question File doesn't exist");
         }
 
-        Logger.addEvent("Started Loading");
-
-        List<Question> list = new ArrayList<Question>();
         try {
-            list = mapper.readValue(FILE, new TypeReference<>() {
-            });
+            List<Question> loaded = mapper.readValue(
+                    FILE,
+                    new TypeReference<List<Question>>() {}
+            );
+
+            if (loaded == null) {
+                throw new IllegalStateException("questions.json is empty");
+            }
+
+            questions.clear();
+            questions.addAll(loaded);
+            unsavedCount = 0;
+
         } catch (Exception e) {
-            //throw new IllegalStateException("Could not load question.json: " + e.getMessage());
+            throw new IllegalStateException(
+                    "Could not load questions.json", e
+            );
         }
 
         Logger.addEvent("Loaded Questions");
-
-        return list;
     }
 
-    /**
-     * Saves the current items to items.json.
-     */
-    private static synchronized void saveQuestions() {
+    @Override
+    public synchronized void recordData(List<Question> data) {
+        if (data == null || data.isEmpty()) return;
+        questions.addAll(data);
+        unsavedCount += data.size();
+    }
+
+    @Override
+    public synchronized void saveData() {
+        if (unsavedCount == 0) return;
         Logger.addEvent("Saving New Questions");
         try {
             mapper.writeValue(FILE, questions);
             unsavedCount = 0;
         } catch (Exception e) {
-            System.out.println("Could not save questions.json: " + e.getMessage());
+            throw new IllegalStateException(
+                    "Could not save questions.json", e
+            );
         }
         Logger.addEvent("New Questions Size is now " + questions.size());
     }
 
-    /**
-     * Returns all currently cached items.
-     */
-    public static List<Question> getQuestions() {
+    @Override
+    public synchronized List<Question> getData() {
         return new ArrayList<>(questions);
     }
 
-    /**
-     * Adds items directly to the cache and saves them.
-     */
-    public static void addQuestions(List<Question> newQuestions) {
-        questions.addAll(newQuestions);
-        unsavedCount += newQuestions.size();
-        if (unsavedCount >= 50) saveQuestions();
+    @Override
+    public void runShutdownHook() {
+        saveData();
+    }
+
+    public synchronized int getUnsavedCount() {
+        return unsavedCount;
     }
 }

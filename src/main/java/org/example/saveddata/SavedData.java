@@ -1,8 +1,10 @@
 package org.example.saveddata;
+import java.util.List;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-public abstract class SavedData {
-    protected static final ObjectMapper mapper = new ObjectMapper();
-    protected static int unsavedCount = 0;
+public interface SavedData<T> {
+    void recordData(T data);
+    void saveData();
+    void loadData();
+    T getData();
+    void runShutdownHook();
 }
