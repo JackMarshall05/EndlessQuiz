@@ -6,4 +6,7 @@ public interface SavedData<T> {
     void saveData();
     void loadData();
     T getData();
+    default void validate(){
+        //TODO
+    }
 }

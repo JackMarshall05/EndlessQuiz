@@ -2,9 +2,7 @@ package org.example.objects;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class Item {
     private final String id;
@@ -12,31 +10,38 @@ public class Item {
     private final String description;
     private final Map<String, List<String>> statements;
     private final long qrank;
+    private final Map<String, Measurement> numericProperties;
+    private final boolean numericLoaded;
 
-    /**
-     * @param id the Wikidata item identifier, e.g. Q42
-     * @param label the name or label of the item
-     * @param description a short description of the item
-     * @param statements a map of Wikidata property IDs to lists of related Wikidata item IDs
-     */
+    // Values are converted into a consistent unit; year is optional (P585).
+    public record Measurement(double value, String unit, Integer year) {}
+
     @JsonCreator
-    public Item(
-            @JsonProperty("id") String id,
-            @JsonProperty("label") String label,
-            @JsonProperty("description") String description,
-            @JsonProperty("statements") Map<String, List<String>> statements,
-            @JsonProperty("qrank") long qrank
-    ) {
+    public Item(@JsonProperty("id") String id,
+                @JsonProperty("label") String label,
+                @JsonProperty("description") String description,
+                @JsonProperty("statements") Map<String, List<String>> statements,
+                @JsonProperty("qrank") long qrank,
+                @JsonProperty("numericProperties") Map<String, Measurement> numericProperties,
+                @JsonProperty("numericLoaded") boolean numericLoaded) {
         this.id = id;
         this.label = label;
         this.description = description;
-        this.statements = statements;
+        this.statements = statements == null ? new HashMap<>() : statements;
         this.qrank = qrank;
+        this.numericProperties = numericProperties == null ? new HashMap<>() : numericProperties;
+        this.numericLoaded = numericLoaded;
     }
 
-    public String getId() {return id;}
-    public String getLabel() {return label;}
-    public String getDescription() {return description;}
-    public Map<String, List<String>> getStatements() {return statements;}
-    public long getQrank() {return qrank;}
+    public Item(String id, String label, String description, Map<String, List<String>> statements, long qrank) {
+        this(id, label, description, statements, qrank, Map.of(), false);
+    }
+
+    public String getId() { return id; }
+    public String getLabel() { return label; }
+    public String getDescription() { return description; }
+    public Map<String, List<String>> getStatements() { return statements; }
+    public long getQrank() { return qrank; }
+    public Map<String, Measurement> getNumericProperties() { return numericProperties; }
+    public boolean isNumericLoaded() { return numericLoaded; }
 }

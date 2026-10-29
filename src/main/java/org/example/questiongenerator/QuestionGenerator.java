@@ -1,10 +1,8 @@
 package org.example.questiongenerator;
 
-import org.example.Event;
 import org.example.Logger;
 import org.example.WikidataClient;
 import org.example.objects.Item;
-import org.example.saveddata.SavedQuestionData;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -13,6 +11,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
 public class QuestionGenerator {
     public static Difficulty difficulty = Difficulty.EASY;
@@ -162,91 +161,154 @@ public class QuestionGenerator {
     private record ConditionSelection(QuestionCondition condition, List<String> answerIds, String answerId) {}
     private record QuestionSelection(Item item, QuestionType type, List<ConditionSelection> conditions) {}
 
+    // Numeric questions use the same downloaded Item cache as relationship questions.
+    private record NumericRule(String itemType, String property, String most, String least, boolean dated) {}
+    private static final List<NumericRule> RULES = List.of(
+            new NumericRule("Q6256", "P1082", "Which of these countries has the largest population?", "Which of these countries has the smallest population?", true),
+            new NumericRule("Q6256", "P2046", "Which of these countries has the largest area?", "Which of these countries has the smallest area?", false),
+            new NumericRule("Q515", "P1082", "Which of these cities has the largest population?", "Which of these cities has the smallest population?", true),
+            new NumericRule("Q515", "P2046", "Which of these cities covers the largest area?", "Which of these cities covers the smallest area?", false),
+            new NumericRule("Q8502", "P2044", "Which of these mountains has the highest elevation?", "Which of these mountains has the lowest elevation?", false),
+            new NumericRule("Q4022", "P2043", "Which of these rivers is the longest?", "Which of these rivers is the shortest?", false),
+            new NumericRule("Q4022", "P2053", "Which of these rivers has the largest drainage basin?", "Which of these rivers has the smallest drainage basin?", false),
+            new NumericRule("Q23397", "P2046", "Which of these lakes has the largest area?", "Which of these lakes has the smallest area?", false),
+            new NumericRule("Q23397", "P2234", "Which of these lakes has the greatest volume?", "Which of these lakes has the smallest volume?", false),
+            new NumericRule("Q41176", "P2048", "Which of these buildings is the tallest?", "Which of these buildings is the shortest?", false),
+            new NumericRule("Q5", "P2048", "Which of these people is the tallest?", "Which of these people is the shortest?", false),
+            new NumericRule("Q1248784", "P2044", "Which of these airports is at the highest elevation?", "Which of these airports is at the lowest elevation?", false),
+            new NumericRule("Q11436", "P2050", "Which of these aircraft has the largest wingspan?", "Which of these aircraft has the smallest wingspan?", false)
+    );
+
+
+    private static List<Question> generateNumericQuestions(int count) {
+        List<Question> result = new ArrayList<>();
+        Map<String, Item> cached = WikidataClient.getItems();
+        List<NumericRule> rules = new ArrayList<>(RULES);
+        Collections.shuffle(rules);
+        Map<NumericRule, List<Item>> pools = new HashMap<>();
+        for (NumericRule rule : rules) {
+            List<Item> candidates = cached.values().stream()
+                    .filter(i -> i.getLabel() != null && !i.getLabel().isBlank() && !i.getLabel().matches("Q\\d+"))
+                    .filter(i -> i.getStatements().getOrDefault("P31", List.of()).contains(rule.itemType()))
+                    .filter(i -> i.getNumericProperties().containsKey(rule.property()))
+                    .filter(i -> Double.isFinite(i.getNumericProperties().get(rule.property()).value()))
+                    .collect(Collectors.toCollection(ArrayList::new));
+            if (rule.dated()) {
+                int latest = candidates.stream().map(i -> i.getNumericProperties().get(rule.property()).year())
+                        .filter(Objects::nonNull).mapToInt(Integer::intValue).max().orElse(-1);
+                if (latest < 0) continue;
+                candidates.removeIf(i -> { Integer y = i.getNumericProperties().get(rule.property()).year();
+                    return y == null || y < latest - 5; });
+            }
+            if (candidates.size() >= 4) pools.put(rule, candidates);
+        }
+        if (pools.isEmpty()) return List.of();
+        List<NumericRule> available = new ArrayList<>(pools.keySet());
+        Set<String> generated = new HashSet<>();
+        int attempts = 0;
+        while (result.size() < count && attempts++ < Math.max(40, count * 12)) {
+            NumericRule rule = available.get(ThreadLocalRandom.current().nextInt(available.size()));
+            List<Item> pool = pools.get(rule);
+            Collections.shuffle(pool);
+            List<Item> four = new ArrayList<>(pool.subList(0, 4));
+            if (four.stream().map(Item::getLabel).distinct().count() != 4) continue;
+            boolean most = ThreadLocalRandom.current().nextBoolean();
+            Comparator<Item> comparator = Comparator.comparingDouble(i -> i.getNumericProperties().get(rule.property()).value());
+            Item correct = most ? Collections.max(four, comparator) : Collections.min(four, comparator);
+            double answerValue = correct.getNumericProperties().get(rule.property()).value();
+            if (four.stream().filter(i -> Double.compare(i.getNumericProperties().get(rule.property()).value(), answerValue) == 0).count() != 1) continue;
+            // Population measurements from different years can make near-equal answers ambiguous.
+            if (rule.dated()) {
+                double nearest = most ? four.stream().filter(i -> i != correct).mapToDouble(i -> i.getNumericProperties().get(rule.property()).value()).max().orElse(answerValue)
+                        : four.stream().filter(i -> i != correct).mapToDouble(i -> i.getNumericProperties().get(rule.property()).value()).min().orElse(answerValue);
+                if (answerValue <= 0 || nearest <= 0 || Math.abs(answerValue - nearest) / Math.max(answerValue, nearest) < 0.10) continue;
+            }
+            String combination = rule.itemType() + ":" + rule.property() + ":" + most + ":" +
+                    four.stream().map(Item::getId).sorted().collect(Collectors.joining(","));
+            if (!generated.add(combination)) continue;
+            List<String> options = four.stream().map(Item::getLabel).collect(Collectors.toCollection(ArrayList::new));
+            Collections.shuffle(options);
+            result.add(new Question(most ? rule.most() : rule.least(), correct, correct.getLabel(), options,
+                    (int) Math.min(Integer.MAX_VALUE, correct.getQrank())));
+        }
+        return result;
+    }
+
+
     public static Question pollQuestion() {
         while (bufferedQuestions.isEmpty()) {
-            try {Thread.sleep(1000);}
-            catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException("Interrupted while waiting for a question.");
-            }
+            if (future.isDone()) startFilling();
+            try { Thread.sleep(100); }
+            catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new IllegalStateException(e); }
         }
-
-        Question question = bufferedQuestions.remove((int) (Math.random() * bufferedQuestions.size()));
-
-        if (future.isDone() && bufferedQuestions.size() < TARGET_BUFFER_SIZE) {
-            future = CompletableFuture.runAsync(QuestionGenerator::addQuestions);
-        }
-
+        Question question = bufferedQuestions.remove(ThreadLocalRandom.current().nextInt(bufferedQuestions.size()));
+        if (bufferedQuestions.size() < TARGET_BUFFER_SIZE / 2) startFilling();
         return question;
+    }
+
+    private static synchronized void startFilling() {
+        if (future == null || future.isDone()) future = CompletableFuture.runAsync(QuestionGenerator::addQuestions);
     }
 
     public static void addQuestions() {
         Logger.addEvent("Trying to find new Questions");
-
-        int batchSize = 50;
-
-        while (bufferedQuestions.size() < TARGET_BUFFER_SIZE) {
+        int failures = 0;
+        int batches = 0;
+        while (bufferedQuestions.size() < TARGET_BUFFER_SIZE && !Thread.currentThread().isInterrupted()) {
             try {
-                long start = System.currentTimeMillis();
-
-                List<String> ids = getRandomQuestionIds(batchSize);
-
-                Logger.addEvent("Retrieved Question ID's");
-
-                if (ids.isEmpty()) throw new IllegalStateException("There should always be at least one id");
-
-                List<Item> items = WikidataClient.getItems(ids);
-
-                Logger.addEvent("Retrieved Items");
-
-                List<QuestionSelection> selections = new ArrayList<>();
-                Map<String, List<String>> possibleAnswers = new HashMap<>();
-
-                for (Item item : items) {
-                    QuestionSelection selection = selectQuestion(item);
-                    if (selection == null) continue;
-
-                    selections.add(selection);
-
-                    for (ConditionSelection condition : selection.conditions()) {
-                        if (!condition.condition().reverse()) {
-                            possibleAnswers
-                                    .computeIfAbsent(condition.condition().property(), k -> new ArrayList<>())
-                                    .addAll(condition.answerIds());
-                        }
-                    }
+                // Backfill existing saved items gradually. New items already get numeric data.
+                if (batches++ % 10 == 0) WikidataClient.enrichCachedItems(50);
+                List<Question> newQuestions = new ArrayList<>(generateNumericQuestions(20));
+                int numNumericQuestionsGenerated = newQuestions.size();
+                newQuestions.addAll(generateRelationshipQuestions(50));
+                int numRelationshipQuestionsGenerated = newQuestions.size() - numNumericQuestionsGenerated;
+                if (newQuestions.isEmpty()) {
+                    if (++failures >= 25) return;
+                    Logger.addEvent("Failed to find any new questions. Failed : " + failures + " times");
+                    continue;
                 }
-
-                Logger.addEvent("Selected Questions");
-
-                List<String> requiredAnswerIds = selections.stream()
-                        .flatMap(selection -> selection.conditions().stream())
-                        .flatMap(condition -> condition.answerIds().stream())
-                        .distinct()
-                        .toList();
-
-                WikidataClient.getItems(requiredAnswerIds);
-
-                Logger.addEvent("Loaded Selected Answers");
-
-                WikidataClient.addPossibleAnswers(possibleAnswers);
-
-                Logger.addEvent("Found Possible Answers");
-
-                List<Question> newQuestions = new ArrayList<>();
-                for (QuestionSelection selection : selections) {
-                    Question question = createQuestion(selection);
-                    if (question != null) {newQuestions.add(question);}
-                }
-                bufferedQuestions.addAll(newQuestions);
-                allQuestions.addAll(newQuestions);
-
+                int remaining = TARGET_BUFFER_SIZE - bufferedQuestions.size();
+                List<Question> accepted = newQuestions.subList(0, Math.min(remaining, newQuestions.size()));
+                bufferedQuestions.addAll(accepted);
+                allQuestions.addAll(accepted);
+                failures = 0;
+                Logger.addEvent("Created " + numNumericQuestionsGenerated + " Numeric Questions");
+                Logger.addEvent("Created " + numRelationshipQuestionsGenerated + " Relationship Questions");
+                Logger.addEvent("Had " + failures + " failures");
                 Logger.addEvent("Created Questions with new size " + bufferedQuestions.size());
             } catch (Exception e) {
-                System.out.println("Error: " + e);
-                e.printStackTrace();
+                System.err.println("Question generation: " + e.getMessage());
+                if (++failures >= 25) return;
             }
         }
+    }
+
+    private static List<Question> generateRelationshipQuestions(int batchSize) throws Exception {
+        List<String> ids = getRandomQuestionIds(batchSize);
+        if (ids.isEmpty()) return List.of();
+        List<Item> items = WikidataClient.getItems(ids);
+        List<QuestionSelection> selections = new ArrayList<>();
+        Map<String, List<String>> possibleAnswers = new HashMap<>();
+        for (Item item : items) {
+            QuestionSelection selection = selectQuestion(item);
+            if (selection == null) continue;
+            selections.add(selection);
+            for (ConditionSelection condition : selection.conditions()) {
+                if (!condition.condition().reverse()) possibleAnswers
+                        .computeIfAbsent(condition.condition().property(), k -> new ArrayList<>())
+                        .addAll(condition.answerIds());
+            }
+        }
+        List<String> requiredIds = selections.stream().flatMap(s -> s.conditions().stream())
+                .flatMap(c -> c.answerIds().stream()).distinct().toList();
+        WikidataClient.getItems(requiredIds);
+        WikidataClient.addPossibleAnswers(possibleAnswers);
+        List<Question> newQuestions = new ArrayList<>();
+        for (QuestionSelection selection : selections) {
+            Question question = createQuestion(selection);
+            if (question != null) newQuestions.add(question);
+        }
+        return newQuestions;
     }
 
     private static List<String> getRandomQuestionIds(int batchSize) {
@@ -397,6 +459,7 @@ public class QuestionGenerator {
         if (options.size() < 3) return null;
 
         options.add(answer);
+        if (new HashSet<>(options).size() != 4) return null;
         Collections.shuffle(options);
 
         return new Question(
@@ -430,6 +493,7 @@ public class QuestionGenerator {
         if (answer == null || options.contains(answer)) return null;
 
         options.add(answer);
+        if (new HashSet<>(options).size() != 4) return null;
         Collections.shuffle(options);
 
         return new Question(
@@ -491,6 +555,7 @@ public class QuestionGenerator {
             if (i == falseIndex) answer = option;
         }
 
+        if (new HashSet<>(options).size() != 4) return null;
         Collections.shuffle(options);
 
         return new Question(
