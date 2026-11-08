@@ -147,7 +147,13 @@ public class QuestionGenerator {
             new NumericQuery("Q41176", "P2048", "Which of these buildings is the tallest?", "Which of these buildings is the shortest?", false),
             new NumericQuery("Q5", "P2048", "Which of these people is the tallest?", "Which of these people is the shortest?", false),
             new NumericQuery("Q1248784", "P2044", "Which of these airports is at the highest elevation?", "Which of these airports is at the lowest elevation?", false),
-            new NumericQuery("Q11436", "P2050", "Which of these aircraft has the largest wingspan?", "Which of these aircraft has the smallest wingspan?", false)
+            new NumericQuery("Q11436", "P2050", "Which of these aircraft has the largest wingspan?", "Which of these aircraft has the smallest wingspan?", false),
+
+            // Image questions
+            new ImageQuery("Which person is shown in this image?", "Q5"),
+            new ImageQuery("Which mountain is shown in this image?", "Q8502"),
+            new ImageQuery("Which building is shown in this image?", "Q41176"),
+            new ImageQuery("Which planet is shown in this image?", "Q634")
     );
     private static CompletableFuture<Void> future;
 
