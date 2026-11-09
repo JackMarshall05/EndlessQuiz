@@ -1,3 +1,4 @@
+
 package org.example;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -35,20 +36,20 @@ public class WikidataClient {
 
     public static synchronized List<Item> getItems(List<String> ids) throws Exception {
         if (ids == null || ids.isEmpty()) return List.of();
-        List<String> missing = ids.stream().filter(Objects::nonNull).filter(id -> !items.containsKey(id)).distinct().toList();
+        List<String> missing = ids.stream().filter(Objects::nonNull)
+                .filter(id -> !items.containsKey(id) || !items.get(id).isImageLoaded()).distinct().toList();
         if (!missing.isEmpty()) requestItems(missing);
         return ids.stream().map(items::get).filter(Objects::nonNull).toList();
     }
 
     public static synchronized Map<String, Item> getItems() { return Map.copyOf(items); }
 
-    // Gradually enrich old items.json records; numericLoaded prevents repeatedly fetching items with no numeric properties.
     public static synchronized void enrichCachedItems(int limit) throws Exception {
         if (limit <= 0) return;
         List<String> ids = items.values().stream()
-                .filter(i -> !i.isNumericLoaded())
-                .filter(i -> i.getStatements().getOrDefault("P31", List.of()).stream().anyMatch(type -> Set.of(
-                        "Q6256", "Q515", "Q5", "Q8502", "Q4022", "Q23397", "Q41176", "Q1248784", "Q11436").contains(type)))
+                .filter(i -> !i.isImageLoaded() || (!i.isNumericLoaded()
+                        && i.getStatements().getOrDefault("P31", List.of()).stream().anyMatch(type -> Set.of(
+                        "Q6256", "Q515", "Q5", "Q8502", "Q4022", "Q23397", "Q41176", "Q1248784", "Q11436").contains(type))))
                 .sorted(Comparator.comparingLong(Item::getQrank).reversed())
                 .map(Item::getId).limit(limit).toList();
         if (!ids.isEmpty()) {
@@ -76,7 +77,7 @@ public class WikidataClient {
                         description.isBlank() && old != null ? old.getDescription() : description,
                         extractStatements(entity.path("claims")),
                         old == null ? QuestionGenerator.idsToQRank.getOrDefault(id, 0) : old.getQrank(),
-                        extractNumericProperties(entity.path("claims")), true);
+                        extractNumericProperties(entity.path("claims")), true, true);
                 items.put(id, item);
                 downloaded.put(id, item);
             }
@@ -90,6 +91,17 @@ public class WikidataClient {
             for (JsonNode claim : field.getValue()) {
                 if ("deprecated".equals(claim.path("rank").asText())) continue;
                 JsonNode value = claim.path("mainsnak").path("datavalue");
+
+                // P18 stores a Commons image filename rather than an item ID.
+                if ("P18".equals(field.getKey()) && "string".equals(value.path("type").asText())) {
+                    String filename = value.path("value").asText("").trim();
+                    if (!filename.isBlank()) {
+                        List<String> files = result.computeIfAbsent("P18", k -> new ArrayList<>());
+                        if (!files.contains(filename)) files.add(filename);
+                    }
+                    continue;
+                }
+
                 if (!"wikibase-entityid".equals(value.path("type").asText())) continue;
                 String id = value.path("value").path("id").asText("");
                 if (!id.matches("Q\\d+")) continue;
@@ -107,7 +119,6 @@ public class WikidataClient {
             int selectedRank = -1;
             for (JsonNode claim : claims.path(property)) {
                 if ("deprecated".equals(claim.path("rank").asText())) continue;
-                // Exclude figures that only describe a part of the subject.
                 if (claim.path("qualifiers").has("P518") || claim.path("qualifiers").has("P642")) continue;
                 JsonNode datavalue = claim.path("mainsnak").path("datavalue");
                 if (!"quantity".equals(datavalue.path("type").asText())) continue;
@@ -160,31 +171,31 @@ public class WikidataClient {
         String unit = rawUnit.substring(rawUnit.lastIndexOf('/') + 1);
         if (property.equals("P1082")) return rawUnit.equals("1") ? 1.0 : null;
         if (property.equals("P2046") || property.equals("P2053")) return switch (unit) {
-            case "Q25343" -> 1.0;                 // square metre
-            case "Q712226" -> 1_000_000.0;       // square kilometre
-            case "Q232291" -> 2_589_988.110336; // square mile
-            case "Q35852" -> 10_000.0;           // hectare
+            case "Q25343" -> 1.0;
+            case "Q712226" -> 1_000_000.0;
+            case "Q232291" -> 2_589_988.110336;
+            case "Q35852" -> 10_000.0;
             default -> null;
         };
         if (property.equals("P2234")) return switch (unit) {
-            case "Q25517" -> 1.0;                 // cubic metre
-            case "Q4243638" -> 1_000_000_000.0; // cubic kilometre
-            case "Q11582" -> 0.001;              // litre
+            case "Q25517" -> 1.0;
+            case "Q4243638" -> 1_000_000_000.0;
+            case "Q11582" -> 0.001;
             default -> null;
         };
         if (property.equals("P2067")) return switch (unit) {
-            case "Q11570" -> 1.0;  // kilogram
-            case "Q41803" -> 0.001; // gram
+            case "Q11570" -> 1.0;
+            case "Q41803" -> 0.001;
             default -> null;
         };
         return switch (unit) {
-            case "Q11573" -> 1.0;       // metre
-            case "Q828224" -> 1000.0;   // kilometre
-            case "Q174728" -> 0.01;     // centimetre
-            case "Q174789" -> 0.001;    // millimetre
-            case "Q3710" -> 0.3048;     // foot
-            case "Q218593" -> 0.0254;  // inch
-            case "Q253276" -> 1609.344; // mile
+            case "Q11573" -> 1.0;
+            case "Q828224" -> 1000.0;
+            case "Q174728" -> 0.01;
+            case "Q174789" -> 0.001;
+            case "Q3710" -> 0.3048;
+            case "Q218593" -> 0.0254;
+            case "Q253276" -> 1609.344;
             default -> null;
         };
     }
@@ -200,7 +211,8 @@ public class WikidataClient {
     }
 
     public static synchronized void addPossibleAnswers(Map<String, List<String>> answers) {
-        answers.forEach((property, ids) -> possibleAnswers.computeIfAbsent(property, k -> new HashSet<>()).addAll(ids));
+        answers.forEach((property, ids) ->
+                possibleAnswers.computeIfAbsent(property, k -> new HashSet<>()).addAll(ids));
     }
 
     private static JsonNode requestJson(String url) throws Exception {

@@ -42,16 +42,22 @@ public record ImageQuery(String question, String itemType) implements Query {
             }
             if (options.size() != 4) continue;
             Collections.shuffle(options);
-            result.add(new Question(question, item, item.getLabel(), options,
-                    (int) Math.min(Integer.MAX_VALUE, item.getQrank())));
+            String url = imageUrl(item);
+            if (url == null) continue;
+            result.add(new Question(url, item, item.getLabel(), options));
         }
         return result;
     }
 
+    // The question's Item stores the Commons filename under P18.
     public static String imageUrl(Item item) {
         if (item == null) return null;
         List<String> images = item.getStatements().getOrDefault("P18", List.of());
         if (images.isEmpty() || images.get(0).isBlank()) return null;
+        String filename = images.get(0);
+        String lower = filename.toLowerCase(Locale.ROOT);
+        if (!(lower.endsWith(".jpg") || lower.endsWith(".jpeg") ||
+                lower.endsWith(".png") || lower.endsWith(".gif"))) return null;
         return "https://commons.wikimedia.org/wiki/Special:FilePath/"
                 + URLEncoder.encode(images.get(0), StandardCharsets.UTF_8).replace("+", "%20");
     }

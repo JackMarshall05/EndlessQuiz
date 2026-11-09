@@ -19,36 +19,28 @@ public class SavedQuestionData implements SavedData<List<Question>> {
 
     public SavedQuestionData(){loadData();}
 
+
     @Override
     public synchronized void loadData() {
         Logger.addEvent("Retrieving File Loading Questions");
 
         if (!FILE.exists()) {
-            throw new IllegalStateException("Question File doesn't exist");
+            System.out.println("No saved questions file. Starting with an empty question list.");
+            return;
         }
 
         try {
-            List<Question> loaded = mapper.readValue(
-                    FILE,
-                    new TypeReference<List<Question>>() {}
-            );
-
-            if (loaded == null) {
-                throw new IllegalStateException("questions.json is empty");
-            }
-
+            List<Question> loaded = mapper.readValue(FILE, new TypeReference<List<Question>>() {});
             questions.clear();
-            questions.addAll(loaded);
+            if (loaded != null) questions.addAll(loaded);
             unsavedCount = 0;
-
+            Logger.addEvent("Loaded Questions");
         } catch (Exception e) {
-            throw new IllegalStateException(
-                    "Could not load questions.json", e
-            );
+            e.printStackTrace();
+            throw new IllegalStateException("Could not load " + FILE.getAbsolutePath(), e);
         }
-
-        Logger.addEvent("Loaded Questions");
     }
+
 
     @Override
     public synchronized void recordData(List<Question> data) {

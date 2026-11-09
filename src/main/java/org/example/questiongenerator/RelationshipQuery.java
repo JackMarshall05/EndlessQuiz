@@ -168,7 +168,6 @@ public record RelationshipQuery(
 
     private Question build(Item item, String answer, List<String> options) {
         if (new HashSet<>(options).size() != 4) return null;
-        return new Question(question.formatted(item.getLabel()), item, answer, options,
-                (int) Math.min(Integer.MAX_VALUE, item.getQrank()));
+        return new Question(question.formatted(item.getLabel()), item, answer, options);
     }
 }

@@ -1,3 +1,4 @@
+
 package org.example;
 
 import javafx.animation.PauseTransition;
@@ -8,6 +9,10 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Duration;
@@ -24,11 +29,15 @@ public class GuiClient extends Application {
     private Label questionLabel;
     private Label resultLabel;
     private Label questionNumberLabel;
+    private Label imageStatusLabel;
+    private ImageView imageView;
+    private StackPane imagePane;
     private List<Button> optionButtons;
 
     private Question currentQuestion;
     private int questionNumber = 0;
     private boolean answered = false;
+    private boolean imageErrorHandled = false;
 
     private static final String NORMAL_BUTTON = """
             -fx-background-color: white;
@@ -100,6 +109,22 @@ public class GuiClient extends Application {
                 -fx-font-weight: bold;
                 """);
 
+        imageView = new ImageView();
+        imageView.setFitWidth(550);
+        imageView.setFitHeight(260);
+        imageView.setPreserveRatio(true);
+        imageView.setSmooth(true);
+
+        imageStatusLabel = new Label();
+        imageStatusLabel.setWrapText(true);
+        imageStatusLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #607d8b;");
+        imagePane = new StackPane(imageView, imageStatusLabel);
+        imagePane.setPrefHeight(270);
+        imagePane.setMaxWidth(Double.MAX_VALUE);
+        imagePane.setStyle("-fx-background-color: #f1f5f6; -fx-background-radius: 10;");
+        imagePane.setVisible(false);
+        imagePane.setManaged(false);
+
         optionButtons = new ArrayList<>();
 
         for (int i = 0; i < 4; i++) {
@@ -117,6 +142,7 @@ public class GuiClient extends Application {
                 titleLabel,
                 questionNumberLabel,
                 questionLabel,
+                imagePane,
                 optionButtons.get(0),
                 optionButtons.get(1),
                 optionButtons.get(2),
@@ -151,7 +177,11 @@ public class GuiClient extends Application {
                 );
                 """);
 
-        Scene scene = new Scene(root, 750, 550);
+        ScrollPane scroll = new ScrollPane(root);
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setStyle("-fx-background: #eef7f7; -fx-background-color: transparent;");
+        Scene scene = new Scene(scroll, 750, 650);
 
         stage.setTitle("Wiki Quiz");
         stage.setScene(scene);
@@ -168,6 +198,11 @@ public class GuiClient extends Application {
     private void getQuestion() {
         currentQuestion = null;
         answered = false;
+        imageErrorHandled = false;
+        imagePane.setVisible(false);
+        imagePane.setManaged(false);
+        imageView.setImage(null);
+        imageStatusLabel.setText("");
 
         questionLabel.setText("Finding your next question...");
         resultLabel.setText("");
@@ -182,33 +217,7 @@ public class GuiClient extends Application {
         Thread thread = new Thread(() -> {
             try {
                 Question question = QuestionGenerator.pollQuestion();
-                currentQuestion = question;
-
-                Platform.runLater(() -> {
-                    questionNumber++;
-
-                    questionNumberLabel.setText("Question " + questionNumber);
-
-                    questionLabel.setText(
-                            question.questionText().formatted(
-                                    question.item().getLabel()
-                            )
-                    );
-
-                    List<String> options = question.options();
-
-                    for (int i = 0; i < optionButtons.size(); i++) {
-                        Button button = optionButtons.get(i);
-                        String option = options.get(i);
-
-                        button.setText(option);
-                        button.setDisable(false);
-                        button.setStyle(NORMAL_BUTTON);
-                        button.setOpacity(1);
-
-                        button.setOnAction(event -> checkAnswer(button, option));
-                    }
-                });
+                Platform.runLater(() -> showQuestion(question));
 
             } catch (Exception e) {
                 Platform.runLater(() -> {
@@ -224,6 +233,85 @@ public class GuiClient extends Application {
 
         thread.setDaemon(true);
         thread.start();
+    }
+
+    private void showQuestion(Question question) {
+        currentQuestion = question;
+        questionNumber++;
+        questionNumberLabel.setText("Question " + questionNumber);
+        // Every query supplies finished text; do not format URLs or text twice.
+        questionLabel.setText(question.questionText());
+
+        List<String> options = question.options();
+        for (int i = 0; i < optionButtons.size(); i++) {
+            Button button = optionButtons.get(i);
+            String option = options.get(i);
+            button.setText(option);
+            button.setDisable(true);
+            button.setStyle(NORMAL_BUTTON);
+            button.setOpacity(1);
+            button.setOnAction(event -> checkAnswer(button, option));
+        }
+
+        if (question.imageUrl() == null || question.imageUrl().isBlank()) {
+            enableOptions();
+            return;
+        }
+
+        imagePane.setVisible(true);
+        imagePane.setManaged(true);
+        imageStatusLabel.setText("Loading image...");
+        // For ordinary questions, the photo is supplementary: do not delay answering.
+        if (!question.imageUrl().equals(question.questionText())) enableOptions();
+        Image image;
+        try {
+            image = new Image(question.imageUrl(), 550, 260, true, true, true);
+        } catch (Exception e) {
+            imageLoadFailed(question);
+            return;
+        }
+        imageView.setImage(image);
+        image.errorProperty().addListener((obs, oldValue, error) -> {
+            if (error) Platform.runLater(() -> imageLoadFailed(question));
+        });
+        image.progressProperty().addListener((obs, oldValue, progress) -> {
+            if (progress.doubleValue() >= 1) Platform.runLater(() -> {
+                if (currentQuestion != question || imageErrorHandled) return;
+                if (image.isError() || image.getWidth() <= 0) imageLoadFailed(question);
+                else {
+                    imageStatusLabel.setText("");
+                    enableOptions();
+                }
+            });
+        });
+        if (image.isError()) imageLoadFailed(question);
+        else if (image.getProgress() >= 1 && image.getWidth() > 0) {
+            imageStatusLabel.setText("");
+            enableOptions();
+        }
+    }
+
+    private void enableOptions() {
+        for (Button button : optionButtons) button.setDisable(false);
+    }
+
+    private void imageLoadFailed(Question question) {
+        if (currentQuestion != question || imageErrorHandled) return;
+        imageErrorHandled = true;
+        imageView.setImage(null);
+        if (question.imageUrl().equals(question.questionText())) {
+            // The picture IS the question: skip if it cannot load.
+            imageStatusLabel.setText("Image unavailable. Skipping this question...");
+            PauseTransition pause = new PauseTransition(Duration.seconds(2));
+            pause.setOnFinished(event -> { if (currentQuestion == question) getQuestion(); });
+            pause.play();
+        } else {
+            // An optional supporting image failed; still let the player answer.
+            imagePane.setVisible(false);
+            imagePane.setManaged(false);
+            imageStatusLabel.setText("");
+            enableOptions();
+        }
     }
 
     /**

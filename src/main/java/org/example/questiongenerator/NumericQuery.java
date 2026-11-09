@@ -57,8 +57,7 @@ public record NumericQuery(
             if (!seen.add(key)) continue;
             List<String> options = four.stream().map(Item::getLabel).collect(Collectors.toCollection(ArrayList::new));
             Collections.shuffle(options);
-            result.add(new Question(highest ? most : least, answer, answer.getLabel(), options,
-                    (int) Math.min(Integer.MAX_VALUE, answer.getQrank())));
+            result.add(new Question(highest ? most : least, answer, answer.getLabel(), options, null));
         }
         return result;
     }
