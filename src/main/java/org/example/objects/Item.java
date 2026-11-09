@@ -24,8 +24,8 @@ public class Item {
                 @JsonProperty("statements") Map<String, List<String>> statements,
                 @JsonProperty("qrank") long qrank,
                 @JsonProperty("numericProperties") Map<String, Measurement> numericProperties,
-                @JsonProperty("numericLoaded") boolean numericLoaded,
-                @JsonProperty("imageLoaded") boolean imageLoaded) {
+                @JsonProperty("numeric") boolean numericLoaded,
+                @JsonProperty("image") boolean imageLoaded) {
         this.id = id;
         this.label = label;
         this.description = description;

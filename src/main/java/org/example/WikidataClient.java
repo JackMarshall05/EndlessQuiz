@@ -4,7 +4,10 @@ package org.example;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.objects.Item;
+import org.example.questiongenerator.Query;
+import org.example.questiongenerator.QuestionCondition;
 import org.example.questiongenerator.QuestionGenerator;
+import org.example.questiongenerator.RelationshipQuery;
 import org.example.saveddata.SavedDataManager;
 import java.net.URI;
 import java.net.http.*;
@@ -85,18 +88,32 @@ public class WikidataClient {
         if (!downloaded.isEmpty()) SavedDataManager.SAVED_ITEM_DATA.recordData(downloaded);
     }
 
+
     private static Map<String, List<String>> extractStatements(JsonNode claims) {
+        Set<String> usedProperties = new HashSet<>(Set.of("P31", "P18"));
+
+        for (Query query : QuestionGenerator.allQueries) {
+            if (query instanceof RelationshipQuery relationship) {
+                for (QuestionCondition condition : relationship.conditions()) {
+                    if (condition.property() != null) usedProperties.add(condition.property());
+                    if (condition.answerType() != null) usedProperties.add(condition.answerType());
+                }
+            }
+        }
+
         Map<String, List<String>> result = new LinkedHashMap<>();
         claims.fields().forEachRemaining(field -> {
+            String property = field.getKey();
+            if (!usedProperties.contains(property)) return;
+
             for (JsonNode claim : field.getValue()) {
                 if ("deprecated".equals(claim.path("rank").asText())) continue;
                 JsonNode value = claim.path("mainsnak").path("datavalue");
 
-                // P18 stores a Commons image filename rather than an item ID.
-                if ("P18".equals(field.getKey()) && "string".equals(value.path("type").asText())) {
+                if ("P18".equals(property) && "string".equals(value.path("type").asText())) {
                     String filename = value.path("value").asText("").trim();
                     if (!filename.isBlank()) {
-                        List<String> files = result.computeIfAbsent("P18", k -> new ArrayList<>());
+                        List<String> files = result.computeIfAbsent(property, k -> new ArrayList<>());
                         if (!files.contains(filename)) files.add(filename);
                     }
                     continue;
@@ -105,12 +122,13 @@ public class WikidataClient {
                 if (!"wikibase-entityid".equals(value.path("type").asText())) continue;
                 String id = value.path("value").path("id").asText("");
                 if (!id.matches("Q\\d+")) continue;
-                List<String> ids = result.computeIfAbsent(field.getKey(), k -> new ArrayList<>());
+                List<String> ids = result.computeIfAbsent(property, k -> new ArrayList<>());
                 if (!ids.contains(id)) ids.add(id);
             }
         });
         return result;
     }
+
 
     private static Map<String, Item.Measurement> extractNumericProperties(JsonNode claims) {
         Map<String, Item.Measurement> result = new HashMap<>();
